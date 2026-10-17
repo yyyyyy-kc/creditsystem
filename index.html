@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>大學課程與學分管理平台</title>
+<style>
+  :root{
+    --bg:#f5f6fa; --panel:#ffffff; --line:#e2e5ee; --text:#1d2230; --muted:#6b7280;
+    --primary:#4f46e5; --primary-soft:#eef0ff; --danger:#dc2626; --danger-soft:#fee2e2;
+    --ok:#059669; --ok-soft:#d1fae5; --warn:#b45309; --warn-soft:#fef3c7;
+    --radius:10px; --shadow:0 2px 10px rgba(20,25,45,.06);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;
+    background:var(--bg);color:var(--text);line-height:1.55;font-size:15px}
+  h1,h2,h3,h4{margin:0 0 .5em;line-height:1.3}
+  button{font:inherit;cursor:pointer}
+  input,select,textarea{font:inherit}
+  [hidden]{display:none !important}
+
+  #app{max-width:1180px;margin:24px auto 60px;padding:0 16px}
+  .topbar{display:flex;align-items:center;gap:12px;background:var(--panel);
+    border:1px solid var(--line);border-radius:var(--radius);padding:12px 16px;
+    box-shadow:var(--shadow);margin-bottom:16px;flex-wrap:wrap}
+  .topbar .brand{font-weight:800;font-size:1.05rem;color:var(--primary)}
+  .topbar .spacer{flex:1}
+  .topbar .user{color:var(--muted);font-size:.88rem}
+
+  .toolbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+  .tabs{display:flex;gap:6px;background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--radius);padding:4px;box-shadow:var(--shadow)}
+  .tabs button{border:0;background:transparent;padding:8px 16px;border-radius:7px;
+    color:var(--muted);font-weight:600}
+  .tabs button.active{background:var(--primary);color:#fff}
+  .semester-select{display:flex;align-items:center;gap:8px}
+  .semester-select select{padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:#fff}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px;box-shadow:var(--shadow)}
+  .panel + .panel{margin-top:16px}
+
+  .btn{border:1px solid var(--line);background:#fff;padding:8px 14px;border-radius:8px;font-weight:600}
+  .btn:hover{background:#fafbff}
+  .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+  .btn.primary:hover{filter:brightness(1.06)}
+  .btn.danger{background:var(--danger-soft);border-color:#fecaca;color:var(--danger)}
+  .btn.small{padding:4px 10px;font-size:.85rem}
+  .btn:disabled{opacity:.55;cursor:not-allowed}
+
+  .field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+  .field label{font-size:.86rem;font-weight:600;color:var(--muted)}
+  .field input,.field select,.field textarea{padding:9px 11px;border:1px solid var(--line);
+    border-radius:8px;background:#fff;width:100%}
+  .field input:focus,.field select:focus{outline:2px solid var(--primary-soft);border-color:var(--primary)}
+  .field .err{font-size:.78rem;color:var(--danger)}
+
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+  @media(max-width:640px){.grid-2{grid-template-columns:1fr}}
+
+  .course-group{margin-bottom:18px}
+  .course-group h3{display:flex;align-items:center;gap:8px;font-size:.95rem;color:var(--muted)}
+  .badge{display:inline-block;background:var(--primary-soft);color:var(--primary);
+    border-radius:999px;padding:2px 10px;font-size:.78rem;font-weight:700}
+  .course-card{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);
+    border-radius:9px;padding:10px 12px;margin-top:8px;background:#fff;cursor:pointer}
+  .course-card:hover{border-color:#c7cdf0}
+  .course-main{flex:1;min-width:0}
+  .course-name{font-weight:700}
+  .course-meta{font-size:.83rem;color:var(--muted);margin-top:2px}
+  .course-slots{font-size:.8rem;color:var(--primary);margin-top:4px}
+  .course-side{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .course-side .credits{font-weight:700;color:var(--primary);white-space:nowrap}
+  .course-actions{display:flex;gap:6px}
+
+  .empty{color:var(--muted);text-align:center;padding:26px 10px;font-size:.9rem}
+
+  .timetable{width:100%;border-collapse:collapse;table-layout:fixed;font-size:.78rem}
+  .timetable th,.timetable td{border:1px solid var(--line);padding:3px;vertical-align:top}
+  .timetable thead th{background:var(--primary-soft);font-size:.82rem;padding:7px 4px}
+  .timetable tbody th{background:#fafbff;font-weight:600;text-align:center;width:64px;font-size:.75rem}
+  .timetable tbody th small{display:block;color:var(--muted);font-weight:400;font-size:.68rem}
+  .slot-cell{cursor:pointer;min-height:38px;transition:background .12s}
+  .slot-cell:hover{background:#f7f8ff}
+  .tt-course{background:#eef0ff;border-radius:5px;padding:3px 5px;margin-bottom:3px;
+    font-size:.72rem;line-height:1.25;overflow:hidden}
+  .tt-course .tt-name{font-weight:700;color:#3730a3;display:block;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .tt-course .tt-loc{color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tt-course.conflict{background:var(--danger-soft);border:1px solid #fecaca}
+  .tt-course.conflict .tt-name{color:var(--danger)}
+
+  .stats-table{width:100%;border-collapse:collapse;font-size:.85rem}
+  .stats-table th,.stats-table td{border:1px solid var(--line);padding:7px 9px;text-align:center}
+  .stats-table thead th{background:var(--primary-soft)}
+  .stats-table tbody th{text-align:left;background:#fafbff}
+  .stats-table tr.total-row th,.stats-table tr.total-row td{background:#f4f5ff;font-weight:700}
+  .stats-note{font-size:.82rem;color:var(--muted);margin-top:10px}
+
+  .modal-backdrop{position:fixed;inset:0;background:rgba(15,20,40,.45);display:flex;
+    align-items:flex-start;justify-content:center;padding:24px 12px;z-index:50;overflow:auto}
+  .modal{background:#fff;border-radius:12px;max-width:760px;width:100%;padding:20px 22px;
+    box-shadow:0 12px 40px rgba(20,25,45,.25);margin:auto}
+  .modal h3{margin-top:0}
+  .modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;
+    padding-top:14px;border-top:1px solid var(--line)}
+
+  .slot-grid{width:100%;border-collapse:collapse;font-size:.72rem;table-layout:fixed}
+  .slot-grid th,.slot-grid td{border:1px solid var(--line);padding:0;height:22px;text-align:center}
+  .slot-grid thead th{background:var(--primary-soft);height:24px;font-size:.76rem}
+  .slot-grid tbody th{width:34px;background:#fafbff;font-weight:600;font-size:.7rem}
+  .slot-grid td.slot-cell{cursor:pointer}
+  .slot-grid td.slot-cell:hover{background:#eef0ff}
+  .slot-grid td.slot-cell.selected{background:var(--primary)}
+  .slot-grid td.slot-cell.occupied{background:var(--danger-soft)}
+  .slot-grid td.slot-cell.selected.occupied{background:#f97316}
+  .slot-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.76rem;color:var(--muted);margin-top:8px}
+  .slot-legend i{display:inline-block;width:12px;height:12px;border-radius:3px;
+    border:1px solid var(--line);vertical-align:-2px;margin-right:4px}
+
+  #toast-root{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;
+    gap:8px;z-index:100;max-width:min(90vw,380px)}
+  .toast{padding:10px 14px;border-radius:9px;font-size:.86rem;box-shadow:0 6px 20px rgba(20,25,45,.18);
+    background:#fff;border-left:4px solid var(--primary);animation:toastIn .18s ease}
+  .toast.success{border-left-color:var(--ok)}
+  .toast.error{border-left-color:var(--danger)}
+  .toast.warn{border-left-color:var(--warn)}
+  @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  .auth-card{max-width:400px;margin:60px auto;background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;padding:26px;box-shadow:var(--shadow)}
+  .auth-card h2{text-align:center}
+  .auth-card .divider{display:flex;align-items:center;gap:10px;color:var(--muted);
+    font-size:.8rem;margin:14px 0}
+  .auth-card .divider::before,.auth-card .divider::after{content:"";flex:1;height:1px;background:var(--line)}
+  .auth-switch{text-align:center;font-size:.86rem;margin-top:12px;color:var(--muted)}
+  .auth-switch button{background:none;border:0;color:var(--primary);font-weight:700}
+  .inline-msg{padding:8px 11px;border-radius:8px;font-size:.85rem;margin-bottom:12px}
+  .inline-msg.error{background:var(--danger-soft);color:var(--danger)}
+  .inline-msg.ok{background:var(--ok-soft);color:var(--ok)}
+  .inline-msg.warn{background:var(--warn-soft);color:var(--warn)}
+
+  .import-preview{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin-top:10px}
+  .import-preview table{width:100%;border-collapse:collapse;font-size:.78rem}
+  .import-preview th,.import-preview td{border-bottom:1px solid var(--line);padding:5px 8px;text-align:left}
+  .import-preview th{background:#fafbff;position:sticky;top:0}
+  .row-invalid{background:var(--danger-soft)}
+  .row-dup{background:var(--warn-soft)}
+  .row-ok{background:#fff}
+  .muted{color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="topbar" class="topbar" hidden>
+    <span class="brand">🎓 課程與學分管理</span>
+    <span class="spacer"></span>
+    <span class="user" id="user-email"></span>
+    <button class="btn small" id="btn-signout">登出</button>
+  </div>
+
+  <main id="auth-view">
+    <div class="auth-card">
+      <h2>登入 / 註冊</h2>
+      <div id="auth-msg"></div>
+      <button class="btn primary" id="btn-google" style="width:100%">使用 Google 登入</button>
+      <div class="divider">或使用電子郵件</div>
+      <form id="auth-form">
+        <div class="field">
+          <label for="auth-email">電子郵件(任意名稱@任意後綴即可)</label>
+          <input type="email" id="auth-email" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="auth-password">密碼（至少 6 碼）(由於本系統資料庫屬開發者可見，故強烈建議設置普通密碼，並不要存重要個資)</label>
+          <input type="password" id="auth-password" autocomplete="current-password" required minlength="6">
+        </div>
+        <button class="btn primary" type="submit" id="btn-auth-submit" style="width:100%">登入</button>
+      </form>
+      <div class="auth-switch">
+        <span id="auth-switch-text">還沒有帳號？</span>
+        <button type="button" id="btn-toggle-mode">註冊</button>
+      </div>
+    </div>
+  </main>
+
+  <main id="main-view" hidden>
+    <div class="toolbar">
+      <div class="tabs" id="tabs">
+        <button data-tab="courses" class="active">課程管理</button>
+        <button data-tab="timetable">課表</button>
+        <button data-tab="stats">學分統計</button>
+        <button data-tab="io">匯入 / 匯出</button>
+      </div>
+      <div class="semester-select">
+        <label for="semester-select">學期</label>
+        <select id="semester-select"></select>
+      </div>
+    </div>
+    <section id="tab-content"></section>
+  </main>
+</div>
+
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+
+<script type="module">
+/* ===== Firebase SDK（必須用 CDN URL，才能在瀏覽器直接執行） ===== */
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import {
+  getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider,
+  createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import {
+  getFirestore, collection, doc, setDoc, updateDoc, deleteDoc,
+  onSnapshot, serverTimestamp
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+/* ===== 你的 Firebase 設定 ===== */
+const firebaseConfig = {
+  apiKey: "AIzaSyCGSc3jO4hRl3mjTmJpKnCvYMUCHSjCPzw",
+  authDomain: "week5-hw-a9658.firebaseapp.com",
+  projectId: "week5-hw-a9658",
+  storageBucket: "week5-hw-a9658.firebasestorage.app",
+  messagingSenderId: "834343506615",
+  appId: "1:834343506615:web:99163919b29aede6d13332"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const auth  = getAuth(fbApp);
+const db    = getFirestore(fbApp);
+console.log('[Init] Firebase 已初始化，projectId=', firebaseConfig.projectId);
+
+/* ===== 固定業務規則常數 ===== */
+const SEMESTERS = ['大一上','大一下','大二上','大二下','大三上','大三下','大四上','大四下'];
+const CATEGORIES = [
+  { name: '系訂必修', required: 79 },
+  { name: '共同必修', required: 12 },
+  { name: '通識',     required: 12 },
+  { name: '指定選修', required: 18 },
+  { name: '一般選修', required: 16 },
+];
+const CATEGORY_NAMES = CATEGORIES.map(c => c.name);
+const PERIODS = ['0','1','2','3','4','5','6','7','8','9','10','A','B','C','D'];
+const PERIOD_TIMES = {
+  '0':  ['07:10','08:00'],
+  '1':  ['08:10','09:00'],
+  '2':  ['09:10','10:00'],
+  '3':  ['10:20','11:10'],
+  '4':  ['11:20','12:10'],
+  '5':  ['12:20','13:10'],
+  '6':  ['13:20','14:10'],
+  '7':  ['14:20','15:10'],
+  '8':  ['15:30','16:20'],
+  '9':  ['16:30','17:20'],
+  '10': ['17:30','18:20'],
+  'A':  ['18:25','19:15'],
+  'B':  ['19:20','20:10'],
+  'C':  ['20:15','21:05'],
+  'D':  ['21:10','22:00'],
+};
+const WEEKDAYS = [1,2,3,4,5,6];
+const WEEKDAY_LABELS = {1:'一',2:'二',3:'三',4:'四',5:'五',6:'六'};
+const BYDAY_MAP = {1:'MO',2:'TU',3:'WE',4:'TH',5:'FR',6:'SA'};
+const TZID = 'Asia/Taipei';
+
+/* ===== 應用狀態 ===== */
+const state = {
+  user: null,
+  courses: [],
+  unsubscribeCourses: null,
+  currentSemester: SEMESTERS[0],
+  activeTab: 'courses',
+  loading: false,
+  authMode: 'login',
+};
+
+/* ===== DOM 參考 ===== */
+const $ = sel => document.querySelector(sel);
+const topbar       = $('#topbar');
+const userEmailEl  = $('#user-email');
+const authView     = $('#auth-view');
+const mainView     = $('#main-view');
+const authMsg      = $('#auth-msg');
+const authForm     = $('#auth-form');
+const authEmail    = $('#auth-email');
+const authPassword = $('#auth-password');
+const authSubmit   = $('#btn-auth-submit');
+const authSwitchTx = $('#auth-switch-text');
+const btnToggle    = $('#btn-toggle-mode');
+const semesterSel  = $('#semester-select');
+const tabsEl       = $('#tabs');
+const tabContent   = $('#tab-content');
+const modalRoot    = $('#modal-root');
+const toastRoot    = $('#toast-root');
+
+/* ===== 工具函式 ===== */
+function esc(s){
+  return String(s ?? '').replace(/[&<>"']/g, m => (
+    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]
+  ));
+}
+function toast(msg, type='info', ms=3500){
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  toastRoot.appendChild(el);
+  setTimeout(() => el.remove(), ms);
+}
+function fmtSlots(slots){
+  if (!slots || !slots.length) return '未設定時間';
+  const byDay = {};
+  for (const s of slots){
+    if (!byDay[s.day]) byDay[s.day] = [];
+    byDay[s.day].push(s.period);
+  }
+  return Object.keys(byDay).map(Number).sort((a,b)=>a-b)
+    .map(d => `週${WEEKDAY_LABELS[d]} ${byDay[d].join(',')}`).join(' · ');
+}
+const isPeriod = p => PERIODS.includes(p);
+const isSemester = s => SEMESTERS.includes(s);
+const isCategory = c => CATEGORY_NAMES.includes(c);
+
+/* ===== 認證流程 ===== */
+onAuthStateChanged(auth, user => {
+  console.log('[Auth] 狀態變更，user=', user ? user.uid : null);
+  if (state.unsubscribeCourses){ state.unsubscribeCourses(); state.unsubscribeCourses = null; }
+  state.user = user;
+  state.courses = [];
+
+  if (!user){
+    authView.hidden = false;
+    mainView.hidden = true;
+    topbar.hidden = true;
+    return;
+  }
+
+  authView.hidden = true;
+  mainView.hidden = false;
+  topbar.hidden = false;
+  userEmailEl.textContent = user.email || user.displayName || '已登入使用者';
+
+  semesterSel.value = state.currentSemester;
+  subscribeCourses(user.uid);
+  render();
+});
+
+function subscribeCourses(uid){
+  const colRef = collection(db, 'users', uid, 'courses');
+  state.loading = true;
+  console.log('[Firestore] 訂閱：users/' + uid + '/courses');
+  state.unsubscribeCourses = onSnapshot(
+    colRef,
+    { includeMetadataChanges: true },
+    snap => {
+      const fromCache = snap.metadata.fromCache;
+      console.log('[Firestore] 快照：' + snap.docs.length + ' 筆，來源：' + (fromCache ? 'cache' : 'server'));
+      state.courses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      state.loading = false;
+      render();
+    },
+    err => {
+      console.error('[Firestore] onSnapshot 失敗：', err.code, err.message);
+      state.loading = false;
+      toast('載入課程失敗：' + (err.code || '') + ' — ' + err.message, 'error', 8000);
+      render();
+    }
+  );
+}
+
+$('#btn-google').addEventListener('click', async () => {
+  setAuthMsg('');
+  try {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  } catch (e){
+    console.error('[Auth] Google 登入失敗：', e.code, e.message);
+    setAuthMsg(friendlyAuthError(e), 'error');
+  }
+});
+
+authForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  setAuthMsg('');
+  const email = authEmail.value.trim();
+  const pass  = authPassword.value;
+  if (!email || pass.length < 6){
+    setAuthMsg('請輸入有效的電子郵件與至少 6 碼的密碼。', 'error');
+    return;
+  }
+  authSubmit.disabled = true;
+  try {
+    if (state.authMode === 'register'){
+      await createUserWithEmailAndPassword(auth, email, pass);
+      toast('註冊成功，已自動登入', 'success');
+    } else {
+      await signInWithEmailAndPassword(auth, email, pass);
+    }
+  } catch (err){
+    console.error('[Auth] Email 登入/註冊失敗：', err.code, err.message);
+    setAuthMsg(friendlyAuthError(err), 'error');
+  } finally {
+    authSubmit.disabled = false;
+  }
+});
+
+btnToggle.addEventListener('click', () => {
+  state.authMode = state.authMode === 'login' ? 'register' : 'login';
+  if (state.authMode === 'register'){
+    authSubmit.textContent = '註冊';
+    authSwitchTx.textContent = '已經有帳號？';
+    btnToggle.textContent = '登入';
+  } else {
+    authSubmit.textContent = '登入';
+    authSwitchTx.textContent = '還沒有帳號？';
+    btnToggle.textContent = '註冊';
+  }
+  setAuthMsg('');
+});
+
+$('#btn-signout').addEventListener('click', async () => {
+  try { await signOut(auth); toast('已登出', 'success'); }
+  catch (e){ console.error('[Auth] 登出失敗：', e); toast('登出失敗：' + e.message, 'error'); }
+});
+
+function setAuthMsg(text, type){
+  if (!text){ authMsg.innerHTML = ''; return; }
+  authMsg.innerHTML = `<div class="inline-msg ${type||'warn'}">${esc(text)}</div>`;
+}
+function friendlyAuthError(e){
+  const code = e?.code || '';
+  if (code.includes('invalid-email'))            return '電子郵件格式不正確。';
+  if (code.includes('user-not-found'))           return '找不到此帳號，請先註冊。';
+  if (code.includes('wrong-password'))           return '密碼錯誤。';
+  if (code.includes('invalid-credential'))       return '電子郵件或密碼不正確。';
+  if (code.includes('email-already-in-use'))     return '此電子郵件已被註冊。';
+  if (code.includes('weak-password'))            return '密碼強度不足，請至少使用 6 碼。';
+  if (code.includes('popup-closed-by-user'))     return '登入視窗已關閉。';
+  if (code.includes('unauthorized-domain'))      return '此網域未加入 Firebase 授權網域，請到 Authentication → Settings → Authorized domains 加入。';
+  if (code.includes('network-request-failed'))   return '網路連線失敗，請檢查網路。';
+  return '操作失敗：' + (e?.message || '未知錯誤');
+}
+
+/* ===== 主渲染 ===== */
+tabsEl.addEventListener('click', e => {
+  const btn = e.target.closest('button[data-tab]');
+  if (!btn) return;
+  state.activeTab = btn.dataset.tab;
+  [...tabsEl.querySelectorAll('button')].forEach(b => b.classList.toggle('active', b === btn));
+  render();
+});
+
+SEMESTERS.forEach(s => {
+  const opt = document.createElement('option');
+  opt.value = s; opt.textContent = s;
+  semesterSel.appendChild(opt);
+});
+semesterSel.value = state.currentSemester;
+semesterSel.addEventListener('change', () => {
+  state.currentSemester = semesterSel.value;
+  render();
+});
+
+function render(){
+  if (!state.user) return;
+  if (state.loading){
+    tabContent.innerHTML = `<div class="panel"><div class="empty">載入課程資料中…</div></div>`;
+    return;
+  }
+  if (state.activeTab === 'courses')        renderCourses();
+  else if (state.activeTab === 'timetable') renderTimetable();
+  else if (state.activeTab === 'stats')     renderStats();
+  else if (state.activeTab === 'io')        renderIO();
+}
+
+/* ===== 課程管理 ===== */
+function renderCourses(){
+  const sem = state.currentSemester;
+  const list = state.courses.filter(c => c.semester === sem);
+  const total = list.reduce((sum, c) => sum + (Number(c.credits) || 0), 0);
+
+  let html = `
+    <div class="panel">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+        <h2 style="margin:0;font-size:1.05rem">${esc(sem)} 課程</h2>
+        <span class="badge">本學期總學分：${total}</span>
+        <span style="flex:1"></span>
+        <button class="btn primary" id="btn-add-course">＋ 新增課程</button>
+      </div>`;
+
+  if (!list.length){
+    html += `<div class="empty">此學期尚無課程，點擊「新增課程」開始建立。</div>`;
+  } else {
+    for (const cat of CATEGORIES){
+      const items = list.filter(c => c.category === cat.name);
+      if (!items.length) continue;
+      const catTotal = items.reduce((s,c) => s + (Number(c.credits)||0), 0);
+      html += `<div class="course-group">
+        <h3>${esc(cat.name)} <span class="badge">${catTotal} 學分</span></h3>`;
+      for (const c of items){
+        html += `
+          <div class="course-card" data-id="${esc(c.id)}">
+            <div class="course-main">
+              <div class="course-name">${esc(c.name)}</div>
+              <div class="course-meta">
+                ${c.code ? '代碼 ' + esc(c.code) : ''}
+                ${c.teacher ? ' · 教師 ' + esc(c.teacher) : ''}
+                ${c.location ? ' · 地點 ' + esc(c.location) : ''}
+              </div>
+              <div class="course-slots">${esc(fmtSlots(c.slots))}</div>
+            </div>
+            <div class="course-side">
+              <span class="credits">${Number(c.credits) || 0} 學分</span>
+              <div class="course-actions">
+                <button class="btn small" data-act="edit">編輯</button>
+                <button class="btn small danger" data-act="del">刪除</button>
+              </div>
+            </div>
+          </div>`;
+      }
+      html += `</div>`;
+    }
+  }
+  html += `</div>`;
+  tabContent.innerHTML = html;
+
+  $('#btn-add-course').addEventListener('click', () => openCourseModal(null));
+
+  tabContent.querySelectorAll('.course-card').forEach(card => {
+    const id = card.dataset.id;
+    const course = state.courses.find(c => c.id === id);
+    if (!course) return;
+    card.querySelector('[data-act="edit"]').addEventListener('click', e => {
+      e.stopPropagation();
+      openCourseModal(course);
+    });
+    card.querySelector('[data-act="del"]').addEventListener('click', async e => {
+      e.stopPropagation();
+      await deleteCourseFlow(course);
+    });
+    card.addEventListener('click', () => openCourseModal(course));
+  });
+}
+
+async function deleteCourseFlow(course){
+  const ok = confirm(`確定要刪除課程「${course.name}」嗎？此動作無法復原。`);
+  if (!ok) return;
+  try {
+    await deleteDoc(doc(db, 'users', state.user.uid, 'courses', course.id));
+    // 樂觀更新
+    state.courses = state.courses.filter(c => c.id !== course.id);
+    render();
+    toast('已刪除課程', 'success');
+  } catch (e){
+    console.error('[Firestore] 刪除失敗：', e.code, e.message);
+    toast('刪除失敗：' + (e.code || '') + ' — ' + e.message, 'error', 6000);
+  }
+}
+
+/* ===== 課程表單 Modal ===== */
+function openCourseModal(course, presetSlot){
+  const isEdit = !!course;
+  const formSemester = course?.semester || state.currentSemester;
+  const formCategory = course?.category || CATEGORY_NAMES[0];
+  const selectedSlots = new Set((course?.slots || []).map(s => `${s.day}-${s.period}`));
+  if (presetSlot) selectedSlots.add(`${presetSlot.day}-${presetSlot.period}`);
+
+  modalRoot.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal" role="dialog" aria-modal="true" aria-label="${isEdit?'編輯課程':'新增課程'}">
+        <h3>${isEdit ? '編輯課程' : '新增課程'}</h3>
+        <div class="grid-2">
+          <div class="field">
+            <label>課程名稱 <span style="color:var(--danger)">*</span></label>
+            <input id="f-name" value="${esc(course?.name || '')}" maxlength="80">
+            <div class="err" id="e-name"></div>
+          </div>
+          <div class="field">
+            <label>學分數 <span style="color:var(--danger)">*</span></label>
+            <input id="f-credits" type="number" min="0.5" max="30" step="0.5"
+                   value="${course?.credits ?? ''}">
+            <div class="err" id="e-credits"></div>
+          </div>
+          <div class="field">
+            <label>學期</label>
+            <select id="f-semester">
+              ${SEMESTERS.map(s => `<option value="${s}" ${s===formSemester?'selected':''}>${s}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field">
+            <label>學分分類</label>
+            <select id="f-category">
+              ${CATEGORY_NAMES.map(c => `<option value="${c}" ${c===formCategory?'selected':''}>${c}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field">
+            <label>課程代碼</label>
+            <input id="f-code" value="${esc(course?.code || '')}" maxlength="40">
+          </div>
+          <div class="field">
+            <label>授課教師</label>
+            <input id="f-teacher" value="${esc(course?.teacher || '')}" maxlength="80">
+          </div>
+          <div class="field">
+            <label>上課地點</label>
+            <input id="f-location" value="${esc(course?.location || '')}" maxlength="80">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>上課時間（可多選；粉紅為此學期其他課程已佔用）</label>
+          <div id="slot-grid-wrap"></div>
+          <div class="slot-legend">
+            <span><i style="background:#fff"></i>可選</span>
+            <span><i style="background:var(--primary)"></i>已選擇</span>
+            <span><i style="background:var(--danger-soft)"></i>已被其他課程佔用</span>
+            <span><i style="background:#f97316"></i>衝突</span>
+          </div>
+          <div class="err" id="e-slots"></div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn" id="m-cancel">取消</button>
+          <button class="btn primary" id="m-save">${isEdit ? '儲存變更' : '新增課程'}</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const wrap = $('#slot-grid-wrap');
+
+  function occupiedMap(){
+    const sem = $('#f-semester').value;
+    const map = new Map();
+    for (const c of state.courses){
+      if (c.semester !== sem) continue;
+      if (isEdit && c.id === course.id) continue;
+      for (const s of (c.slots || [])){
+        const k = `${s.day}-${s.period}`;
+        if (!map.has(k)) map.set(k, []);
+        map.get(k).push(c);
+      }
+    }
+    return map;
+  }
+
+  function buildGrid(){
+    const occ = occupiedMap();
+    let html = '<table class="slot-grid"><thead><tr><th></th>';
+    for (const d of WEEKDAYS) html += `<th>${WEEKDAY_LABELS[d]}</th>`;
+    html += '</tr></thead><tbody>';
+    for (const p of PERIODS){
+      html += `<tr><th>${p}</th>`;
+      for (const d of WEEKDAYS){
+        const k = `${d}-${p}`;
+        const isSel = selectedSlots.has(k);
+        const occList = occ.get(k);
+        let cls = 'slot-cell';
+        if (occList) cls += ' occupied';
+        if (isSel) cls += ' selected';
+        if (isSel && occList) cls += ' conflict';
+        const title = occList ? '已被 ' + occList.map(c => c.name).join('、') + ' 佔用' : '';
+        html += `<td class="${cls}" data-key="${k}" title="${esc(title)}"></td>`;
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+
+    wrap.querySelectorAll('td.slot-cell').forEach(td => {
+      td.addEventListener('click', () => {
+        const k = td.dataset.key;
+        const occList = occ.get(k);
+        if (selectedSlots.has(k)){
+          selectedSlots.delete(k);
+        } else {
+          if (occList){
+            const ok = confirm(`此時段已被「${occList.map(c=>c.name).join('、')}」佔用，仍要選擇嗎？\n儲存後將顯示時間衝突，但不會覆蓋原有課程。`);
+            if (!ok) return;
+          }
+          selectedSlots.add(k);
+        }
+        buildGrid();
+      });
+    });
+  }
+
+  $('#f-semester').addEventListener('change', buildGrid);
+  buildGrid();
+
+  $('#m-cancel').addEventListener('click', closeModal);
+  modalRoot.querySelector('.modal-backdrop').addEventListener('click', e => {
+    if (e.target.classList.contains('modal-backdrop')) closeModal();
+  });
+
+  $('#m-save').addEventListener('click', async () => {
+    const name = $('#f-name').value.trim();
+    const creditsRaw = $('#f-credits').value.trim();
+    const semester = $('#f-semester').value;
+    const category = $('#f-category').value;
+    const code = $('#f-code').value.trim();
+    const teacher = $('#f-teacher').value.trim();
+    const location = $('#f-location').value.trim();
+
+    $('#e-name').textContent = '';
+    $('#e-credits').textContent = '';
+    $('#e-slots').textContent = '';
+
+    let hasError = false;
+    if (!name){ $('#e-name').textContent = '課程名稱為必填。'; hasError = true; }
+    const credits = Number(creditsRaw);
+    if (!creditsRaw || isNaN(credits) || credits <= 0 || credits > 30){
+      $('#e-credits').textContent = '學分數需為 0.5–30 之間的有效數字。';
+      hasError = true;
+    }
+    if (!isSemester(semester) || !isCategory(category)){
+      $('#e-slots').textContent = '學期或分類不合法。';
+      hasError = true;
+    }
+    if (hasError) return;
+
+    const slots = [...selectedSlots].map(k => {
+      const [d, p] = k.split('-');
+      return { day: Number(d), period: p };
+    });
+
+    const payload = {
+      name, credits, semester, category,
+      code: code || '',
+      teacher: teacher || '',
+      location: location || '',
+      slots,
+      updatedAt: serverTimestamp(),
+    };
+
+    const saveBtn = $('#m-save');
+    saveBtn.disabled = true;
+    saveBtn.textContent = '儲存中…';
+    try {
+      if (isEdit){
+        await updateDoc(doc(db, 'users', state.user.uid, 'courses', course.id), payload);
+        // 樂觀更新
+        const idx = state.courses.findIndex(c => c.id === course.id);
+        if (idx >= 0) state.courses[idx] = { ...state.courses[idx], ...payload };
+        toast('已更新課程', 'success');
+      } else {
+        const ref = doc(collection(db, 'users', state.user.uid, 'courses'));
+        await setDoc(ref, { ...payload, createdAt: serverTimestamp() });
+        // 樂觀更新
+        state.courses.push({ id: ref.id, ...payload });
+        toast('已新增課程', 'success');
+      }
+      // 若儲存的學期與目前顯示不同，自動切換到該學期，避免「存了看不到」
+      if (state.currentSemester !== semester){
+        state.currentSemester = semester;
+        semesterSel.value = semester;
+      }
+      closeModal();
+      render();
+    } catch (e){
+      console.error('[Firestore] 儲存失敗：', e.code, e.message);
+      toast('儲存失敗：' + (e.code || '') + ' — ' + e.message, 'error', 8000);
+      saveBtn.disabled = false;
+      saveBtn.textContent = isEdit ? '儲存變更' : '新增課程';
+    }
+  });
+}
+
+function closeModal(){ modalRoot.innerHTML = ''; }
+
+/* ===== 課表 ===== */
+function renderTimetable(){
+  const sem = state.currentSemester;
+  const list = state.courses.filter(c => c.semester === sem);
+
+  const idx = new Map();
+  for (const c of list){
+    for (const s of (c.slots || [])){
+      const k = `${s.day}-${s.period}`;
+      if (!idx.has(k)) idx.set(k, []);
+      idx.get(k).push(c);
+    }
+  }
+
+  let html = `<div class="panel">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      <h2 style="margin:0;font-size:1.05rem">${esc(sem)} 課表</h2>
+      <span class="muted">點擊空白時段可新增課程；點擊課程可編輯。</span>
+    </div>
+    <div style="overflow-x:auto">
+    <table class="timetable"><thead><tr><th>節次</th>`;
+  for (const d of WEEKDAYS) html += `<th>週${WEEKDAY_LABELS[d]}</th>`;
+  html += `</tr></thead><tbody>`;
+
+  for (const p of PERIODS){
+    const [st, et] = PERIOD_TIMES[p];
+    html += `<tr><th>${p}<small>${st}<br>${et}</small></th>`;
+    for (const d of WEEKDAYS){
+      const k = `${d}-${p}`;
+      const items = idx.get(k) || [];
+      let cell = '';
+      if (items.length > 1){
+        cell = items.map(c => `
+          <div class="tt-course conflict" data-id="${esc(c.id)}">
+            <span class="tt-name">⚠ ${esc(c.name)}</span>
+            <span class="tt-loc">${esc(c.location || '')}</span>
+          </div>`).join('');
+      } else if (items.length === 1){
+        const c = items[0];
+        cell = `<div class="tt-course" data-id="${esc(c.id)}">
+            <span class="tt-name">${esc(c.name)}</span>
+            <span class="tt-loc">${esc(c.location || '')}</span>
+          </div>`;
+      }
+      html += `<td class="slot-cell" data-day="${d}" data-period="${p}">${cell}</td>`;
+    }
+    html += `</tr>`;
+  }
+  html += `</tbody></table></div>`;
+  if (!list.length) html += `<div class="empty">此學期尚無課程。</div>`;
+  html += `</div>`;
+  tabContent.innerHTML = html;
+
+  tabContent.querySelectorAll('td.slot-cell').forEach(td => {
+    td.addEventListener('click', e => {
+      const courseEl = e.target.closest('.tt-course');
+      if (courseEl){
+        const c = state.courses.find(x => x.id === courseEl.dataset.id);
+        if (c) openCourseModal(c);
+        return;
+      }
+      openCourseModal(null, { day: Number(td.dataset.day), period: td.dataset.period });
+    });
+  });
+}
+
+/* ===== 學分統計 ===== */
+function computeStats(){
+  const perSem = {};
+  for (const s of SEMESTERS){
+    perSem[s] = { __total: 0 };
+    for (const c of CATEGORY_NAMES) perSem[s][c] = 0;
+  }
+  for (const course of state.courses){
+    const sem = course.semester;
+    if (!perSem[sem]) continue;
+    const cr = Number(course.credits) || 0;
+    if (perSem[sem][course.category] !== undefined) perSem[sem][course.category] += cr;
+    perSem[sem].__total += cr;
+  }
+  const catTotal = {};
+  for (const c of CATEGORY_NAMES) catTotal[c] = 0;
+  let grandTotal = 0;
+  for (const s of SEMESTERS){
+    for (const c of CATEGORY_NAMES) catTotal[c] += perSem[s][c];
+    grandTotal += perSem[s].__total;
+  }
+  return { perSem, catTotal, grandTotal };
+}
+
+function renderStats(){
+  const { perSem, catTotal, grandTotal } = computeStats();
+  let html = `<div class="panel">
+    <h2 style="margin-top:0;font-size:1.05rem">學分統計</h2>
+    <div style="overflow-x:auto">
+    <table class="stats-table">
+      <thead><tr><th>學期</th>
+        ${CATEGORY_NAMES.map(c => `<th>${c}</th>`).join('')}
+        <th>學期總計</th>
+      </tr></thead>
+      <tbody>`;
+  for (const s of SEMESTERS){
+    html += `<tr><th>${s}</th>`;
+    for (const c of CATEGORY_NAMES) html += `<td>${perSem[s][c]}</td>`;
+    html += `<td><strong>${perSem[s].__total}</strong></td></tr>`;
+  }
+  html += `<tr class="total-row"><th>分類累積</th>`;
+  for (const c of CATEGORY_NAMES) html += `<td>${catTotal[c]}</td>`;
+  html += `<td>${grandTotal}</td></tr>`;
+  html += `</tbody></table></div>`;
+  html += `<div class="stats-note">
+    固定學分要求（僅供參考，不計算剩餘學分）：
+    ${CATEGORIES.map(c => `${c.name} ${c.required}`).join('、')}，合計 137。
+  </div></div>`;
+  tabContent.innerHTML = html;
+}
+
+/* ===== 匯入 / 匯出 ===== */
+function renderIO(){
+  tabContent.innerHTML = `
+    <div class="panel">
+      <h2 style="margin-top:0;font-size:1.05rem">TXT 匯出</h2>
+      <p class="muted">匯出全部課程為 TSV（Tab 分隔）格式，可重新匯入本系統。</p>
+      <button class="btn primary" id="btn-txt-export">下載 TXT</button>
+    </div>
+
+    <div class="panel">
+      <h2 style="margin-top:0;font-size:1.05rem">TXT 匯入</h2>
+      <p class="muted">
+        格式：第一行為表頭，欄位順序
+        <code>semester, category, name, credits, code, teacher, location, slots</code>；
+        slots 以 <code>day:period;day:period</code> 表示（day 1–6，period 0–10/A–D）。
+      </p>
+      <input type="file" id="file-import" accept=".txt,text/plain">
+      <div id="import-result"></div>
+    </div>
+
+    <div class="panel">
+      <h2 style="margin-top:0;font-size:1.05rem">ICS 行事曆匯出 可用於apple行事曆</h2>
+      <div class="grid-2">
+        <div class="field">
+          <label>學期</label>
+          <select id="ics-semester">
+            ${SEMESTERS.map(s => `<option value="${s}" ${s===state.currentSemester?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>時區</label>
+          <input value="${TZID}" disabled>
+        </div>
+        <div class="field">
+          <label>開始日期</label>
+          <input type="date" id="ics-start">
+        </div>
+        <div class="field">
+          <label>結束日期</label>
+          <input type="date" id="ics-end">
+        </div>
+      </div>
+      <button class="btn primary" id="btn-ics-export">下載 ICS</button>
+    </div>
+  `;
+
+  const today = new Date();
+  const end = new Date(); end.setDate(end.getDate() + 120);
+  $('#ics-start').value = toDateInput(today);
+  $('#ics-end').value   = toDateInput(end);
+
+  $('#btn-txt-export').addEventListener('click', exportTXT);
+  $('#file-import').addEventListener('change', handleImportFile);
+  $('#btn-ics-export').addEventListener('click', exportICS);
+}
+
+function toDateInput(d){
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+
+function exportTXT(){
+  if (!state.courses.length){
+    toast('目前沒有任何課程可匯出，請先新增課程', 'warn');
+    return;
+  }
+  const header = ['semester','category','name','credits','code','teacher','location','slots'];
+  const lines = [header.join('\t')];
+  const sorted = [...state.courses].sort((a,b) => {
+    const si = SEMESTERS.indexOf(a.semester) - SEMESTERS.indexOf(b.semester);
+    if (si !== 0) return si;
+    return CATEGORY_NAMES.indexOf(a.category) - CATEGORY_NAMES.indexOf(b.category);
+  });
+  for (const c of sorted){
+    const slots = (c.slots || []).map(s => `${s.day}:${s.period}`).join(';');
+    lines.push([
+      c.semester, c.category, c.name, c.credits,
+      c.code || '', c.teacher || '', c.location || '', slots
+    ].join('\t'));
+  }
+  downloadFile('courses.txt', lines.join('\n'), 'text/plain;charset=utf-8');
+  toast('已匯出 TXT', 'success');
+}
+
+function handleImportFile(e){
+  const file = e.target.files?.[0];
+  const box = $('#import-result');
+  box.innerHTML = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const parsed = parseTXT(String(reader.result || ''));
+    renderImportPreview(box, parsed);
+  };
+  reader.onerror = () => {
+    box.innerHTML = `<div class="inline-msg error">讀取檔案失敗。</div>`;
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+function parseTXT(text){
+  const lines = text.replace(/\r\n?/g, '\n').split('\n').filter(l => l.trim() !== '');
+  const result = { validRows: [], invalidRows: [], dupRows: [], total: 0 };
+  if (!lines.length) return result;
+
+  let startIdx = 0;
+  const first = lines[0].split('\t').map(s => s.trim().toLowerCase());
+  if (first.includes('semester') || first.includes('學期')) startIdx = 1;
+
+  const existingKey = new Set(
+    state.courses.map(c => `${c.semester}|${c.name}|${c.code || ''}`)
+  );
+
+  for (let i = startIdx; i < lines.length; i++){
+    result.total++;
+    const raw = lines[i];
+    const cols = raw.split('\t').map(s => s.trim());
+    const lineNo = i + 1;
+
+    if (cols.length < 4){
+      result.invalidRows.push({ lineNo, raw, reason: '欄位數不足（至少需 semester, category, name, credits）' });
+      continue;
+    }
+    const [semester, category, name, creditsRaw, code = '', teacher = '', location = '', slotsRaw = ''] = cols;
+
+    const errors = [];
+    if (!isSemester(semester)) errors.push(`未知學期「${semester}」`);
+    if (!isCategory(category)) errors.push(`未知分類「${category}」`);
+    if (!name) errors.push('課程名稱為空');
+    const credits = Number(creditsRaw);
+    if (!creditsRaw || isNaN(credits) || credits <= 0 || credits > 30){
+      errors.push(`學分數不合法「${creditsRaw}」`);
+    }
+
+    const slots = [];
+    if (slotsRaw){
+      const parts = slotsRaw.split(';').map(s => s.trim()).filter(Boolean);
+      for (const part of parts){
+        const [dStr, pStr] = part.split(':');
+        const day = Number(dStr);
+        if (!WEEKDAYS.includes(day)){ errors.push(`未知星期「${part}」`); break; }
+        if (!isPeriod(pStr)){ errors.push(`未知節次「${part}」`); break; }
+        slots.push({ day, period: pStr });
+      }
+    }
+
+    if (errors.length){
+      result.invalidRows.push({ lineNo, raw, reason: errors.join('；') });
+      continue;
+    }
+
+    const key = `${semester}|${name}|${code}`;
+    if (existingKey.has(key)){
+      result.dupRows.push({ lineNo, raw, reason: '與現有課程重複（同學期＋同名稱＋同代碼）' });
+      continue;
+    }
+
+    result.validRows.push({ lineNo, semester, category, name, credits, code, teacher, location, slots });
+  }
+  return result;
+}
+
+function renderImportPreview(box, parsed){
+  if (!parsed.total){
+    box.innerHTML = `<div class="inline-msg warn">檔案中沒有可解析的資料。</div>`;
+    return;
+  }
+  let html = `
+    <div class="inline-msg ${parsed.validRows.length ? 'ok' : 'warn'}">
+      共 ${parsed.total} 行：有效 ${parsed.validRows.length}、無效 ${parsed.invalidRows.length}、重複 ${parsed.dupRows.length}。
+    </div>
+    <div class="import-preview">
+      <table>
+        <thead><tr><th>行號</th><th>狀態</th><th>學期</th><th>分類</th><th>名稱</th><th>學分</th><th>說明</th></tr></thead>
+        <tbody>`;
+
+  const rows = [
+    ...parsed.validRows.map(r => ({ ...r, status: 'ok' })),
+    ...parsed.dupRows.map(r => ({ ...r, status: 'dup' })),
+    ...parsed.invalidRows.map(r => ({ ...r, status: 'invalid' })),
+  ].sort((a,b) => a.lineNo - b.lineNo);
+
+  for (const r of rows){
+    const cls = r.status === 'ok' ? 'row-ok' : r.status === 'dup' ? 'row-dup' : 'row-invalid';
+    const label = r.status === 'ok' ? '有效' : r.status === 'dup' ? '重複' : '無效';
+    html += `<tr class="${cls}">
+      <td>${r.lineNo}</td><td>${label}</td>
+      <td>${esc(r.semester || '')}</td><td>${esc(r.category || '')}</td>
+      <td>${esc(r.name || '')}</td><td>${r.credits ?? ''}</td>
+      <td>${esc(r.reason || '')}</td>
+    </tr>`;
+  }
+  html += `</tbody></table></div>`;
+
+  if (parsed.validRows.length){
+    html += `<div style="margin-top:12px">
+      <button class="btn primary" id="btn-confirm-import">確認匯入 ${parsed.validRows.length} 筆</button>
+    </div>`;
+  }
+  box.innerHTML = html;
+
+  const btn = $('#btn-confirm-import');
+  if (btn){
+    btn.addEventListener('click', async () => {
+      if (!confirm(`確定要匯入 ${parsed.validRows.length} 筆課程嗎？`)) return;
+      btn.disabled = true;
+      btn.textContent = '匯入中…';
+      let ok = 0, fail = 0;
+      for (const r of parsed.validRows){
+        try {
+          const ref = doc(collection(db, 'users', state.user.uid, 'courses'));
+          await setDoc(ref, {
+            name: r.name, credits: r.credits,
+            semester: r.semester, category: r.category,
+            code: r.code || '', teacher: r.teacher || '',
+            location: r.location || '', slots: r.slots,
+            createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+          });
+          state.courses.push({ id: ref.id, ...r });
+          ok++;
+        } catch (e){
+          console.error('[Firestore] 匯入失敗：', e.code, e.message);
+          fail++;
+        }
+      }
+      render();
+      if (fail) toast(`匯入完成：成功 ${ok} 筆、失敗 ${fail} 筆`, 'warn', 6000);
+      else toast(`匯入成功 ${ok} 筆`, 'success');
+      box.innerHTML = '';
+      $('#file-import').value = '';
+    });
+  }
+}
+
+function exportICS(){
+  const semester = $('#ics-semester').value;
+  const startStr = $('#ics-start').value;
+  const endStr = $('#ics-end').value;
+  if (!isSemester(semester)){ toast('學期不合法', 'error'); return; }
+  if (!startStr || !endStr){ toast('請設定日期範圍', 'error'); return; }
+
+  const startDate = new Date(startStr + 'T00:00:00');
+  const endDate   = new Date(endStr + 'T23:59:59');
+  if (isNaN(startDate) || isNaN(endDate) || endDate < startDate){
+    toast('日期範圍不合法', 'error');
+    return;
+  }
+
+  const list = state.courses.filter(c => c.semester === semester);
+  if (!list.length){
+    toast('「' + semester + '」目前沒有課程。請先新增課程，或切換到有課程的學期。', 'warn', 5000);
+    return;
+  }
+
+  const events = [];
+  const skipped = [];
+
+  for (const course of list){
+    const slots = course.slots || [];
+    if (!slots.length){ skipped.push(`${course.name}（無時段）`); continue; }
+    for (const slot of slots){
+      if (!WEEKDAYS.includes(slot.day) || !isPeriod(slot.period)){
+        skipped.push(`${course.name}（時段不合法）`);
+        continue;
+      }
+      const [stTime, etTime] = PERIOD_TIMES[slot.period];
+
+      const first = new Date(startDate);
+      while (first <= endDate && first.getDay() !== slot.day){
+        first.setDate(first.getDate() + 1);
+      }
+      if (first > endDate) continue;
+
+      const dtStart = new Date(first);
+      const [sh, sm] = stTime.split(':').map(Number);
+      dtStart.setHours(sh, sm, 0, 0);
+
+      const dtEnd = new Date(first);
+      const [eh, em] = etTime.split(':').map(Number);
+      dtEnd.setHours(eh, em, 0, 0);
+
+      const until = new Date(endDate);
+      until.setHours(23, 59, 59, 0);
+
+      events.push({
+        uid: `${course.id}-${slot.day}-${slot.period}@ntuee-credit`,
+        dtStart, dtEnd,
+        untilUTC: icsUTC(until),
+        byday: BYDAY_MAP[slot.day],
+        summary: course.name,
+        location: course.location || '',
+        description: [
+          course.code ? `代碼：${course.code}` : '',
+          course.teacher ? `教師：${course.teacher}` : '',
+          `節次：週${WEEKDAY_LABELS[slot.day]} ${slot.period}（${stTime}-${etTime}）`,
+        ].filter(Boolean).join('\n'),
+      });
+    }
+  }
+
+  if (!events.length){
+    toast('範圍內沒有可匯出的課程事件（可能日期範圍與課程星期不相符）', 'warn', 6000);
+    return;
+  }
+
+  const ics = buildICS(events);
+  try {
+    downloadFile(`courses-${semester}.ics`, ics, 'text/calendar;charset=utf-8');
+  } catch (e){
+    console.error('[ICS] 下載失敗：', e);
+    toast('ICS 下載失敗：' + e.message, 'error', 6000);
+    return;
+  }
+  if (skipped.length){
+    toast(`已匯出 ${events.length} 個事件；略過：${[...new Set(skipped)].join('、')}`, 'warn', 6000);
+  } else {
+    toast(`已匯出 ${events.length} 個事件`, 'success');
+  }
+}
+
+function icsDateLocal(d){
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}T${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+function icsUTC(d){
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getUTCFullYear()}${p(d.getUTCMonth()+1)}${p(d.getUTCDate())}T${p(d.getUTCHours())}${p(d.getUTCMinutes())}${p(d.getUTCSeconds())}Z`;
+}
+function icsEscape(s){
+  return String(s ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\n/g, '\\n');
+}
+function buildICS(events){
+  const now = icsUTC(new Date());
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//NTUEE Credit System//Course Calendar//ZH-TW',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VTIMEZONE',
+    `TZID:${TZID}`,
+    'BEGIN:STANDARD',
+    'DTSTART:19700101T000000',
+    'TZOFFSETFROM:+0800',
+    'TZOFFSETTO:+0800',
+    'TZNAME:CST',
+    'END:STANDARD',
+    'END:VTIMEZONE',
+  ];
+  for (const ev of events){
+    lines.push(
+      'BEGIN:VEVENT',
+      `UID:${ev.uid}`,
+      `DTSTAMP:${now}`,
+      `DTSTART;TZID=${TZID}:${icsDateLocal(ev.dtStart)}`,
+      `DTEND;TZID=${TZID}:${icsDateLocal(ev.dtEnd)}`,
+      `RRULE:FREQ=WEEKLY;BYDAY=${ev.byday};UNTIL=${ev.untilUTC}`,
+      `SUMMARY:${icsEscape(ev.summary)}`,
+      ev.location ? `LOCATION:${icsEscape(ev.location)}` : '',
+      ev.description ? `DESCRIPTION:${icsEscape(ev.description)}` : '',
+      'END:VEVENT'
+    );
+  }
+  lines.push('END:VCALENDAR');
+  return lines.filter(Boolean).join('\r\n');
+}
+
+function downloadFile(filename, content, mime){
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && modalRoot.innerHTML) closeModal();
+});
+</script>
+</body>
+</html>
